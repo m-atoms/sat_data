@@ -4,23 +4,12 @@
 #                                                              #
 ################################################################
 
-import os
-from pathlib import Path
 import pandas as pd
-
-# limit conditions
-WHEEL_SATURATION = 8000
-GYRO_SPIN = 2
-LOW_VOLTAGE = 1
-
-# directory info
-sat_telem_dir = Path('sat_telem/')
-
-# build dict with sat_name : DataFrame pairs
-sats = {os.path.splitext(filename)[0]: pd.read_csv(sat_telem_dir/filename) for filename in os.listdir(sat_telem_dir)}
+from sat_data_org import sat_telem_dir, sat_orbit_dir
+from SAT_LIMIT_CONDITIONS import WHEEL_SATURATION, GYRO_SPIN, LOW_VOLTAGE
 
 # avg wheel saturation
-def wheel_saturation(sat):
+def wheel_saturation(sats, sat):
     s_size = sats[sat].wheel_s.size
     s_lim = sats[sat].wheel_s[sats[sat].wheel_s >= WHEEL_SATURATION]
     s_lim_size = s_lim.size
@@ -47,7 +36,7 @@ def wheel_saturation(sat):
     print(f"avg wheel saturation:   {avg_lim:.4f}%")
 
 # avg spin >2% magnitdue
-def gyro_spin(sat):
+def gyro_spin(sats, sat):
     x_size = sats[sat].wheel_x.size
     x_lim = sats[sat].wheel_x[abs(sats[sat].wheel_x) >= GYRO_SPIN]
     x_lim_size = x_lim.size
@@ -69,7 +58,7 @@ def gyro_spin(sat):
     print(f"avg spin >2% magnitude: {avg_lim:.4f}%")
 
 # avg low voltage flag
-def low_voltage(sat):
+def low_voltage(sats, sat):
     size = sats[sat].low_voltage.size
     lim = sats[sat].low_voltage[sats[sat].low_voltage == LOW_VOLTAGE]
     lim_size = lim.size
@@ -77,10 +66,11 @@ def low_voltage(sat):
     #print(f" LV  [size: {size}] [lim: {lim_size}] [lim%: {lim_size / size * 100}]")
     print(f"avg low voltage flag:   {avg_lim:.4f}%")
     
-for sat in sats:
-    print(f"\nSatellite: {sat.upper()}")
-    wheel_saturation(sat)
+def sat_limit(sats):
+    for sat in sats:
+        print(f"\nSatellite: {sat.upper()}")
+        wheel_saturation(sats, sat)
 
-    gyro_spin(sat)
+        gyro_spin(sats, sat)
 
-    low_voltage(sat)
+        low_voltage(sats, sat)
