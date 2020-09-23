@@ -5,39 +5,29 @@
 ################################################################
 
 import os
+import time
 from pathlib import Path
+from sat_data_org import data_viz_dir, sat_data_viz_dir, fleet_data_viz_dir, beta_angles_data_viz_dir
 from matplotlib import pyplot as plt
 import pandas as pd
 from statsmodels.nonparametric.smoothers_lowess import lowess
 import numpy as np
 import datetime as dt
 
-# directory info
-sat_telem_dir = Path('sat_telem/')
-sat_orbit_dir = Path('sat_orbit/')
-data_viz_dir = Path('sat_data_viz/')
-sat_data_viz_dir = os.path.join(data_viz_dir, 'sat')
-fleet_data_viz_dir = os.path.join(data_viz_dir, 'fleet')
-beta_angles_data_viz_dir = os.path.join(data_viz_dir, 'beta_angles')
-
-# build dict with sat_name : DataFrame pairs
-sats = {os.path.splitext(filename)[0]: pd.read_csv(sat_telem_dir/filename) for filename in os.listdir(sat_telem_dir)}
-
-# read fleet orbit beta angles from CSVs and fix data coulmn name
-beta_angles = pd.read_csv(sat_orbit_dir/'beta_sun_deg.csv')
-beta_angles.rename( columns={'Unnamed: 0':'date'}, inplace=True)
-
 ##################################
 # Single Sat Full Data
 ##################################
-def plot_sat(sat):
+def plot_sat(sats, sat):
     fig, axs = plt.subplots(3, sharex=True)
+
+    # set title and axis labels
     axs[0].set_title(f"{sat.upper()} Telemetry")
     axs[0].set_ylabel("gyro (deg/sec)")
     axs[1].set_ylabel("wheel (rpm)")
     axs[2].set_ylabel("bus voltage and low voltage flag")
     axs[2].set_xlabel("time (hours)")
 
+    # plot gyros, wheels, voltage info
     timestamp_hrs = sats[sat].timestamp.apply(lambda x: ((x - sats[sat].timestamp[0])/ (1000 * 3600)))
     axs[0].plot(timestamp_hrs, sats[sat].gyro_x, label='gyro_x')
     axs[0].plot(timestamp_hrs, sats[sat].gyro_y, label='gyro_y')
@@ -64,6 +54,7 @@ def plot_sat(sat):
     axs[0].legend()
     axs[1].legend()
 
+    # maximize figure and save to output dir
     mng = plt.get_current_fig_manager()
     mng.window.state('zoomed')
     plt.savefig(os.path.join(sat_data_viz_dir, f"{sat}.png"))
@@ -71,7 +62,7 @@ def plot_sat(sat):
 ##################################
 # Full Fleet Full Data
 ##################################
-def plot_fleet():
+def plot_fleet(sats):
     fig, axs = plt.subplots(3, 7, sharex=True, sharey='row')
 
     # set title and axis labels
@@ -109,7 +100,7 @@ def plot_fleet():
 ##################################
 # Fleet Gyro Data
 ##################################
-def plot_fleet_gyros():
+def plot_fleet_gyros(sats):
     fig, axs = plt.subplots(3, 7, sharex=True, sharey=True)
 
     # set title and axis labels
@@ -141,7 +132,7 @@ def plot_fleet_gyros():
 ##################################
 # Fleet Reaction Wheel Data
 ##################################
-def plot_fleet_wheels():
+def plot_fleet_wheels(sats):
     fig, axs = plt.subplots(4, 7, sharex=True, sharey=True)
 
     # set title and axis labels
@@ -174,7 +165,7 @@ def plot_fleet_wheels():
 ##################################
 # Fleet Voltage Data
 ##################################
-def plot_fleet_voltages():
+def plot_fleet_voltages(sats):
     fig, axs = plt.subplots(7, 1, sharex=True, sharey=True)
 
     # set title and axis labels
@@ -201,15 +192,20 @@ def plot_fleet_voltages():
 ##################################
 # Fleet Beta Angles
 ##################################
-def plot_beta_angles():
+def plot_beta_angles(sats, beta_angles):
     fig, ax = plt.subplots()
-    markers = ['s', 10, 'x', '<', 11, '.', '|']
-    [ax.plot(pd.to_datetime(beta_angles.date), beta_angles.loc[:,sat], label=sat, marker=markers[idx]) for idx, sat in enumerate(sats)]
+
+    # set title and axis labels
     ax.set_title("Fleet Beta Angles")
     ax.set_xlabel("date (yyyy-mm)")
     ax.set_ylabel("beta angle (deg)")
+
+    # plot each line with unique marker
+    markers = ['s', 10, 'x', '<', 11, '.', '|']
+    [ax.plot(pd.to_datetime(beta_angles.date), beta_angles.loc[:,sat], label=sat, marker=markers[idx]) for idx, sat in enumerate(sats)]
     ax.legend()
 
+    # maximize figure and save to output dir
     mng = plt.get_current_fig_manager()
     mng.window.state('zoomed')
     plt.savefig(os.path.join(beta_angles_data_viz_dir, 'fleet_beta_angles.png'))
@@ -283,10 +279,25 @@ def plot_lowess():
 # note: manual check shows ~100ms so ~10Hz sample rate
 # perform spectral analysis with Lomb-Scargle method
 
-# execute all plotting operations
-#plot_beta_angles()
-#[plot_sat(sat) for sat in sats]
-#plot_fleet()
-#plot_fleet_gyros()
-#plot_fleet_wheels()
-#plot_fleet_voltages()
+##################################
+# Create Plots
+##################################
+def sat_data(sats, beta_angles):
+
+    # plot fleet beta angles and save to file
+    start_time = time.time()
+    plot_beta_angles(sats, beta_angles)
+    print("--- plot_beta_angles: %s seconds ---" % (time.time() - start_time))
+
+    # plot each sat full telem and save to file
+    start_time = time.time()
+    [plot_sat(sats, sat) for sat in sats]
+    print("--- plot_sat: %s seconds ---" % (time.time() - start_time))
+
+    # plot fleet telem and save to file
+    start_time = time.time()
+    plot_fleet(sats)
+    print("--- plot_fleet: %s seconds ---" % (time.time() - start_time))
+    start_time = time.time()
+    start_time = time.time()
+    plot_fleet_voltages(sats)

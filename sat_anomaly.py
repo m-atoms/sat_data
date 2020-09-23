@@ -4,21 +4,12 @@
 #                                                              #
 ################################################################
 
-# find list of filenames in data dirs
-# generate list of strings with sat names
-# get user input for satellite name
-# check against list
-# ask about for telem selection
-# load data based on selection - efficient
-# search telem channel for anomalous conditions as defined by error threshold
-
 import os
+import time
 from pathlib import Path
 import pandas as pd
 from SAT_LIMIT_CONDITIONS import WHEEL_SATURATION, GYRO_SPIN, LOW_VOLTAGE
 from SAT_ANOMALY_CONDITIONS import WHEEL_SATURATION_LIMIT, GYRO_SPIN_LIMIT, LOW_VOLTAGE_LIMIT
-
-#TODO: note the inefficiency of loading all sats
 
 ##################################
 # Get Sat From User
@@ -100,6 +91,9 @@ def sat_anomaly(sats):
     # get channel from user
     selected_channel = get_channel(telem_char)
 
+    # start timer after user input
+    start_time = time.time()
+    
     # use low voltage channel for bus voltage anomaly detection
     if (selected_channel == 'be'):
         selected_channel = 'le'
@@ -109,6 +103,7 @@ def sat_anomaly(sats):
 
     # compute limit occurrence and compare against threshold tolerance
     if (selected_channel == 'tp'):
+        print("--- anomaly_detect: %s seconds ---" % (time.time() - start_time))
         print("no anomaly condition identified for timestamp")
         return False
     elif (selected_channel == 'gx' or selected_channel == 'gy' or selected_channel == 'gz'):
@@ -117,8 +112,10 @@ def sat_anomaly(sats):
         print(f"limit occurrence calculation: {limit_occurrence:.4f}%\nlimit occurrence threshold:   {GYRO_SPIN_LIMIT:.4f}%\n")
 
         if (limit_occurrence > GYRO_SPIN_LIMIT):
+            print("--- anomaly_detect: %s seconds ---" % (time.time() - start_time))
             return True
         else:
+            print("--- anomaly_detect: %s seconds ---" % (time.time() - start_time))
             return False
     elif (selected_channel == 'ws' or selected_channel == 'wx' or selected_channel == 'wy' or selected_channel == 'wz'):
         limit_occurrence = compute_limit_occurrence(channel, WHEEL_SATURATION)
@@ -126,8 +123,10 @@ def sat_anomaly(sats):
         print(f"limit occurrence calculation: {limit_occurrence:.4f}%\nlimit occurrence threshold:   {WHEEL_SATURATION_LIMIT:.4f}%\n")
 
         if (limit_occurrence > WHEEL_SATURATION_LIMIT):
+            print("--- anomaly_detect: %s seconds ---" % (time.time() - start_time))
             return True
         else:
+            print("--- anomaly_detect: %s seconds ---" % (time.time() - start_time))
             return False
     elif (selected_channel == 'le' or selected_channel == 'be'):
         limit_occurrence = compute_limit_occurrence(channel, LOW_VOLTAGE)
@@ -135,6 +134,8 @@ def sat_anomaly(sats):
         print(f"limit occurrence calculation: {limit_occurrence:.4f}%\nlimit occurrence threshold:   {LOW_VOLTAGE_LIMIT:.4f}%\n")
 
         if (limit_occurrence > LOW_VOLTAGE_LIMIT):
+            print("--- anomaly_detect: %s seconds ---" % (time.time() - start_time))
             return True
         else:
+            print("--- anomaly_detect: %s seconds ---" % (time.time() - start_time))
             return False

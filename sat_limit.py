@@ -67,6 +67,11 @@ def low_voltage(sats, sat):
     print(f"avg low voltage flag:   {avg_lim:.4f}%")
     
 def sat_limit(sats):
+
+    print("\n##########################################")
+    print("# Satellite Limit Occurrence Computation #")
+    print("##########################################")
+
     for sat in sats:
         print(f"\nSatellite: {sat.upper()}")
         wheel_saturation(sats, sat)
