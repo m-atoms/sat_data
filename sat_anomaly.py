@@ -15,61 +15,126 @@
 import os
 from pathlib import Path
 import pandas as pd
+from SAT_LIMIT_CONDITIONS import WHEEL_SATURATION, GYRO_SPIN, LOW_VOLTAGE
+from SAT_ANOMALY_CONDITIONS import WHEEL_SATURATION_LIMIT, GYRO_SPIN_LIMIT, LOW_VOLTAGE_LIMIT
 
 #TODO: note the inefficiency of loading all sats
 
-# directory info
-sat_telem_dir = Path('sat_telem')
-#sats = [os.path.splitext(filename)[0] for filename in os.listdir(sat_telem_dir)]
+##################################
+# Get Sat From User
+##################################
+def get_sat(sats_char):
+    # get satellite
+    do = True
+    while do:
+        print("Satellites:")
+        [print(f"{key}: {value}") for key, value in sats_char.items()]
+        char = input("Enter char of satellite or 'q' to quit: ")
 
-# build dict with sat_name : DataFrame pairs
-sats = {os.path.splitext(filename)[0]: pd.read_csv(sat_telem_dir/filename) for filename in os.listdir(sat_telem_dir)}
-# build dict with [s]at_name : sat_name for user convenience 
-sats_char = {sat[0]: sat for sat in sats}
-print(sats.keys())
-print(sats_char)
+        if (char == 'q'):
+            quit()
 
-print("\n####################################")
-print("# Satellite Anomaly Detection Util #")
-print("####################################\n")
+        if (char in sats_char.keys()):
+            do = False
 
-# get satellite
-do = True
-while do:
-    print("Satellites:")
-    [print(f"{key}: {value}") for key, value in sats_char.items()]
-    char = input("Enter char of satellite or 'q' to quit: ")
+        print()
+    print(f"Satellite: {sats_char[char].upper()}\n")
 
-    if (char == 'q'):
-        quit()
+    return char
 
-    if (char in sats_char.keys()):
-        do = False
+##################################
+# Get Channel From User
+##################################
+def get_channel(telem_char):
 
-    print()
-print(f"Satellite: {sats_char[char].upper()}\n")
+    # select telem channel
+    do = True
+    while do:
+        print("Telemetry Channels:")
+        [print(f"{key}: {value}") for key, value in telem_char.items()]
+        char = input("Select telemetry channel or enter 'q' to quit: ")
 
-# extract selected satellite for convenience
-sat = sats[sats_char[char]]
+        if (char == 'q'):
+            quit()
 
-# build dict with [t]elem_channe[l] : telem_channel for user convenience
-telem_char = {f"{col[0]}{col[-1]}": col for col in sat}
+        if (char in telem_char.keys()):
+            do = False
 
-# select telem channel
-do = True
-while do:
-    print("Telemetry Channels:")
-    [print(f"{key}: {value}") for key, value in telem_char.items()]
-    char = input("Select telemetry channel or enter 'q' to quit: ")
+        print()
 
-    if (char == 'q'):
-        quit()
+    print(f"Telem Channel: {telem_char[char].upper()}\n")
 
-    if (char in telem_char.keys()):
-        do = False
+    return char
 
-    print()
+##################################
+# Compute Limit Occurrence
+##################################
+def compute_limit_occurrence(channel, limit_condition):
+    size = channel.size
+    lim = channel[abs(channel) >= limit_condition]
+    lim_size = lim.size
+    lim_occurrence = lim_size / size * 100
+    return lim_occurrence
 
-print(f"Telem Channel: {telem_char[char].upper()}\n")
+#########################################
+# Check User Selected Channel for Anomaly 
+#########################################
+def sat_anomaly(sats):
 
-# access with sat[telem_char[char]]
+    print("\n####################################")
+    print("# Satellite Anomaly Detection Util #")
+    print("####################################\n")
+
+    # build dict with [s]at_name : sat_name for user convenience 
+    sats_char = {sat[0]: sat for sat in sats}
+
+    # get sat from user
+    selected_sat = get_sat(sats_char)
+
+    # extract selected satellite for convenience
+    sat = sats[sats_char[selected_sat]]
+
+    # build dict with [t]elem_channe[l] : telem_channel for user convenience
+    telem_char = {f"{col[0]}{col[-1]}": col for col in sat}
+
+    # get channel from user
+    selected_channel = get_channel(telem_char)
+
+    # use low voltage channel for bus voltage anomaly detection
+    if (selected_channel == 'be'):
+        selected_channel = 'le'
+
+    # extract selected channel for convenience
+    channel = sat.loc[:,telem_char[selected_channel]]
+
+    # compute limit occurrence and compare against threshold tolerance
+    if (selected_channel == 'tp'):
+        print("no anomaly condition identified for timestamp")
+        return False
+    elif (selected_channel == 'gx' or selected_channel == 'gy' or selected_channel == 'gz'):
+        limit_occurrence = compute_limit_occurrence(channel, GYRO_SPIN)
+
+        print(f"limit occurrence calculation: {limit_occurrence:.4f}%\nlimit occurrence threshold:   {GYRO_SPIN_LIMIT:.4f}%\n")
+
+        if (limit_occurrence > GYRO_SPIN_LIMIT):
+            return True
+        else:
+            return False
+    elif (selected_channel == 'ws' or selected_channel == 'wx' or selected_channel == 'wy' or selected_channel == 'wz'):
+        limit_occurrence = compute_limit_occurrence(channel, WHEEL_SATURATION)
+
+        print(f"limit occurrence calculation: {limit_occurrence:.4f}%\nlimit occurrence threshold:   {WHEEL_SATURATION_LIMIT:.4f}%\n")
+
+        if (limit_occurrence > WHEEL_SATURATION_LIMIT):
+            return True
+        else:
+            return False
+    elif (selected_channel == 'le' or selected_channel == 'be'):
+        limit_occurrence = compute_limit_occurrence(channel, LOW_VOLTAGE)
+
+        print(f"limit occurrence calculation: {limit_occurrence:.4f}%\nlimit occurrence threshold:   {LOW_VOLTAGE_LIMIT:.4f}%\n")
+
+        if (limit_occurrence > LOW_VOLTAGE_LIMIT):
+            return True
+        else:
+            return False
