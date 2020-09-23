@@ -18,3 +18,15 @@ telem value limits for nominal behavior
 
 **SAT_ANOMALY_CONDITIONS**
 limit occurence threshold for anomaly detection
+
+**sat_data_org**
+specifies project directory organization
+
+**sat_data_viz**
+contains sat_data visualizations
+
+**sat_orbit**
+contains fleet beta angle data
+
+**sat_telem**
+contains satellite telem
